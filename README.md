@@ -1,4 +1,4 @@
-# CDL DSpace Devops tools
+# pad-dspace-infra: CDL DSpace Devops tools
 A collection of devops scripts and configs, useful for deploying DSpace to AWS.
 
 Borrowed from the amazing https://github.com/cdlib/web-matomo
@@ -10,4 +10,4 @@ Borrowed from the amazing https://github.com/cdlib/web-matomo
 profiles and doing `export AWS_PROFILE=cdl-main`, or pasting temporary shell credentials)
 * `sceptre launch -y .`
 * `./build.sh`
-* Access https://matomo.cdlib.org
+* lather, rinse, repeat
