@@ -1,2 +1,2 @@
 template:
-  path: pub-dspace-stg.yaml.j2
+  path: pub-dspace-dev.yaml.j2

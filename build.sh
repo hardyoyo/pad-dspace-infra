@@ -3,7 +3,7 @@
 set -euo pipefail
 
 export AWS_PROFILE=cdl-pad-dev
-export FUNC=pub-dspace-stg
+export FUNC=pub-dspace-dev
 export REGION=us-west-2
 export ACCT=866216109762
 
