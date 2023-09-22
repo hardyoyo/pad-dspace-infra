@@ -1,0 +1,354 @@
+AWSTemplateFormatVersion: 2010-09-09
+Description: >
+    Creates a container to run Solr for use with DSpace for CDL
+
+# Adjust these variables as needed
+{% set funcname = 'pub-dspace-dev' %}
+{% set component = 'solr' %}
+{% set component_image = 'docker.io/dspace/dspace-solr:dspace-7.6' %} # can be a docker image name or a full url to an image in a registry, including DockerHub
+
+Resources:
+
+  # Our build script will place the container image in this ECR repo (repo is created if it doesn't already exist)
+  ContainerRepository:
+    Type: AWS::ECR::Repository
+    Properties:
+      RepositoryName: {{funcname}}
+
+  # We'll run the task in this Fargate cluster
+  Cluster:
+    Type: AWS::ECS::Cluster
+    Properties:
+      ClusterName: {{funcname}}-cluster
+      Tags:
+        - Key: Program
+          Value: pub
+        - Key: Service
+          Value: dspace
+        - Key: Environment
+          Value: dev
+
+  # Fargate uses this role to set up, pull, and execute the container
+  ExecRole:
+    Type: AWS::IAM::Role
+    Properties:
+      RoleName: {{funcname}}-ExecRole
+      AssumeRolePolicyDocument:
+        Statement:
+          - Action: sts:AssumeRole
+            Effect: Allow
+            Principal:
+              Service: ecs-tasks.amazonaws.com
+      Policies:
+        - PolicyName: allow-fargate-to-set-up-func
+          PolicyDocument:
+            Version: 2012-10-17
+            Statement:
+              - Action:
+                  - ecr:BatchCheckLayerAvailability
+                  - ecr:GetDownloadUrlForLayer
+                  - ecr:BatchGetImage
+                Effect: Allow
+                Resource: !Sub arn:aws:ecr:${AWS::Region}:${AWS::AccountId}:repository/{{funcname}}
+              - Action: ecr:GetAuthorizationToken
+                Effect: Allow
+                Resource: "*"
+              - Action:
+                  - logs:CreateLogStream
+                  - logs:PutLogEvents
+                Effect: Allow
+                Resource: !GetAtt LogGroup.Arn
+
+  # The running container has this role, so whatever the function needs to do
+  # in AWS needs to be authorized here.
+  TaskRole:
+    Type: AWS::IAM::Role
+    Properties:
+      RoleName: {{funcname}}-TaskRole
+      AssumeRolePolicyDocument:
+        Statement:
+          - Action: sts:AssumeRole
+            Effect: Allow
+            Principal:
+              Service: ecs-tasks.amazonaws.com
+      Policies:
+        - PolicyName: allow-ssm-exec
+          PolicyDocument:
+            Version: 2012-10-17
+            Statement:
+              - Action:
+                  - ssmmessages:CreateControlChannel
+                  - ssmmessages:CreateDataChannel
+                  - ssmmessages:OpenControlChannel
+                  - ssmmessages:OpenDataChannel
+                Effect: Allow
+                Resource: "*"
+        - PolicyName: allow-exec-logging
+          PolicyDocument:
+            Version: 2012-10-17
+            Statement:
+              - Action: logs:DescribeLogGroups
+                Effect: Allow
+                Resource: "*"
+              - Action:
+                  - logs:CreateLogStream
+                  - logs:DescribeLogStreams
+                  - logs:PutLogEvents
+                Effect: Allow
+                Resource: arn:aws:logs:us-west-2:451826914157:log-group:{{funcname}}-{{component}}-logs:*
+
+  # Logs from the function will go here
+  LogGroup:
+    Type: AWS::Logs::LogGroup
+    Properties:
+      LogGroupName: {{funcname}}-{{component}}-logs
+      RetentionInDays: 7
+    UpdateReplacePolicy: Retain
+    DeletionPolicy: Retain
+
+  ### PUB-DSPACE-DEV-SOLR TASK DEFINITION BEGINS HERE ##########################################
+  # Define details about the task: container source, needed resources, etc.
+  TaskDef:
+    Type: AWS::ECS::TaskDefinition
+    Properties:
+      ContainerDefinitions:
+        - Essential: true
+          Image: {{component_image}}
+          LogConfiguration:
+            LogDriver: awslogs
+            Options:
+              awslogs-group: !Ref LogGroup
+              awslogs-stream-prefix: {{funcname}}
+              awslogs-region: !Ref AWS::Region
+          Name: {{funcname}}-{{component}}-TaskDef
+          PortMappings:
+            - ContainerPort: 80
+              HostPort: 80
+          Environment:
+            # TODO: use environment variables appropriate for DSpace, but use secretsmanager for credentials
+
+              # Below syntax may look odd, but it is how to override dspace.cfg settings via env variables.
+              # See https://github.com/DSpace/DSpace/blob/main/dspace/config/config-definition.xml
+              # __P__ => "." (e.g. dspace__P__dir => dspace.dir)
+              # __D__ => "-" (e.g. google__D__metadata => google-metadata)
+              # dspace.dir: Must match with Dockerfile's DSPACE_INSTALL directory.
+              - Name: dspace__P__dir
+                Value: /dspace
+
+              # Uncomment to set a non-default value for dspace.server.url or dspace.ui.url
+              # - Name: dspace__P__server__P__url
+              #   Value: http://localhost:8080/server
+              # - Name: dspace__P__ui__P__url
+              #   Value: http://localhost:4000
+
+              - Name: dspace__P__name
+                Value: 'DSpace in AWS Fargate'
+
+              # db_url: this needs to be the URL for our RDS database
+              - Name: db__P__url
+                Value: 'jdbc:postgresql://dspacedb:5432/dspace'
+
+              # solr.server: Ensure we are using the 'dspacesolr' image for Solr
+              solr__P__server: http://dspacesolr:8983/solr
+              # proxies.trusted.ipranges: This setting is required for a REST API running in Docker to trust requests
+              # from the host machine. This IP range MUST correspond to the 'dspacenet' subnet defined above.
+              proxies__P__trusted__P__ipranges: '172.23.0'
+
+
+            # - Name: PHP_MEMORY_LIMIT
+            #   Value: 8192M
+            # - Name: MATOMO_DATABASE_USERNAME
+            #   Value: {% raw %}'{{resolve:secretsmanager:web-matomo-prd:SecretString:db_username}}'{% endraw %}
+            # - Name: MATOMO_DATABASE_PASSWORD
+            #   Value: {% raw %}'{{resolve:secretsmanager:web-matomo-prd:SecretString:db_password}}'{% endraw %}
+            # - Name: MATOMO_DATABASE_HOST
+            #   Value: {% raw %}'{{resolve:secretsmanager:web-matomo-prd:SecretString:db_host}}'{% endraw %}
+            # - Name: MATOMO_MAIL_USERNAME
+            #   Value: {% raw %}'{{resolve:secretsmanager:web-matomo-prd:SecretString:smtp_username}}'{% endraw %}
+            # - Name: MATOMO_MAIL_PASSWORD
+            #   Value: {% raw %}'{{resolve:secretsmanager:web-matomo-prd:SecretString:smtp_password}}'{% endraw %}
+      # TODO: set these to values that make sense for a prod-like DSpace REST-API container
+      Cpu: 8192          # 8 CPUs
+      Memory: 16384      # 16 GB RAM
+      EphemeralStorage:
+        SizeInGiB: 101   # 100 GB disk
+      ExecutionRoleArn: !GetAtt ExecRole.Arn
+      Family: {{funcname}}-TaskDef
+      NetworkMode: awsvpc
+      RequiresCompatibilities:
+        - FARGATE
+      TaskRoleArn: !GetAtt TaskRole.Arn
+      Tags:
+        - Key: Program
+          Value: web
+        - Key: Service
+          Value: matomo
+        - Key: Environment
+          Value: prd
+
+  Service:
+    Type: AWS::ECS::Service
+    DependsOn:
+      - ListenerHTTP
+      - ListenerHTTPS
+    Properties:
+      ServiceName: {{funcname}}-Service
+      Cluster: !Ref Cluster
+      TaskDefinition: !Ref TaskDef
+      DeploymentConfiguration:
+        MinimumHealthyPercent: 100
+        MaximumPercent: 200
+      DesiredCount: 1
+      # This may need to be adjusted if the container takes a while to start up
+      HealthCheckGracePeriodSeconds: 30
+      LaunchType: FARGATE
+      EnableExecuteCommand: true
+      NetworkConfiguration:
+        AwsvpcConfiguration:
+          # change to DISABLED if you're using private subnets that have access to a NAT gateway
+          AssignPublicIp: ENABLED
+          Subnets:
+            - subnet-6c8e3b09  # CDL-AWS-Prd-2a
+            - subnet-2836de71  # CDL-AWS-Prd-2c
+          SecurityGroups:
+            - sg-024cabc4cdfcac609  # HTTP(S) from AWS/CDL/VPN - CDL-Prd-VPC
+      LoadBalancers:
+        - ContainerName: {{funcname}}-TaskDef
+          ContainerPort: 80
+          TargetGroupArn: !Ref TargetGroup
+      Tags:
+        - Key: Program
+          Value: web
+        - Key: Service
+          Value: matomo
+        - Key: Environment
+          Value: prd
+
+  TargetGroup:
+    Type: AWS::ElasticLoadBalancingV2::TargetGroup
+    Properties:
+      HealthCheckIntervalSeconds: 30
+      # will look for a 200 status code by default unless specified otherwise
+      HealthCheckPath: "/"
+      HealthCheckTimeoutSeconds: 5
+      UnhealthyThresholdCount: 2
+      HealthyThresholdCount: 2
+      Name: {{funcname}}-tg
+      Port: 80
+      Protocol: HTTP
+      TargetGroupAttributes:
+        - Key: deregistration_delay.timeout_seconds
+          Value: 60 # default is 300
+      TargetType: ip
+      VpcId: vpc-04d70b61  # CDL-Prd-VPC
+
+  ListenerHTTP:
+    Type: AWS::ElasticLoadBalancingV2::Listener
+    Properties:
+      DefaultActions:
+        - RedirectConfig:
+            Host: "#{host}"
+            Path: "/#{path}"
+            Port: 443
+            Protocol: "HTTPS"
+            Query: "#{query}"
+            StatusCode: HTTP_301
+          Type: redirect
+      LoadBalancerArn: !Ref LoadBalancer
+      Port: 80
+      Protocol: HTTP
+
+  ListenerHTTPS:
+    Type: AWS::ElasticLoadBalancingV2::Listener
+    Properties:
+      DefaultActions:
+        - TargetGroupArn: !Ref TargetGroup
+          Type: forward
+      LoadBalancerArn: !Ref LoadBalancer
+      Port: 443
+      Protocol: HTTPS
+      Certificates:
+        - CertificateArn: arn:aws:acm:us-west-2:451826914157:certificate/043319f1-26f3-4da9-929a-9e9558b1eb59
+
+  LoadBalancer:
+    Type: AWS::ElasticLoadBalancingV2::LoadBalancer
+    Properties:
+      LoadBalancerAttributes:
+        # this is the default, but is specified here in case it needs to be changed
+        - Key: idle_timeout.timeout_seconds
+          Value: 60
+      Name: {{funcname}}-lb
+      # "internal" is also an option
+      Scheme: internet-facing
+      SecurityGroups:
+        - sg-0db6c668      # CDL AWS HTTP(S) from ANY - CDL-Prd-VPC
+      Subnets:
+        - subnet-6c8e3b09  # CDL-AWS-Prd-2a
+        - subnet-2836de71  # CDL-AWS-Prd-2c
+      Tags:
+        - Key: Program
+          Value: web
+        - Key: Service
+          Value: matomo
+        - Key: Environment
+          Value: prd
+
+  WafAssociation:
+    Type: AWS::WAFv2::WebACLAssociation
+    Properties:
+      ResourceArn: !Ref LoadBalancer
+      WebACLArn: arn:aws:wafv2:us-west-2:451826914157:regional/webacl/web-matomo-prd-waf/79203cf0-c638-44c9-99a0-249d29ab365f
+
+  ###################################################################################
+  # Events: The following resources are all for running the task on a schedule.
+  # If you don't need that functionality, you can delete all the "Event" stuff below.
+  ###################################################################################
+  {# EventsRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Statement:
+          - Action: sts:AssumeRole
+            Effect: Allow
+            Principal:
+              Service: events.amazonaws.com
+      Policies:
+        - PolicyName: allow-events-to-run-func
+          PolicyDocument:
+            Version: 2012-10-17
+            Statement:
+              - Action: ecs:RunTask
+                Condition:
+                  ArnEquals:
+                    ecs:cluster: !GetAtt Cluster.Arn
+                Effect: Allow
+                Resource: !Ref TaskDef
+              - Action: iam:PassRole
+                Effect: Allow
+                Resource: !GetAtt ExecRole.Arn
+              - Action: iam:PassRole
+                Effect: Allow
+                Resource: !GetAtt TaskRole.Arn
+
+  EventBridgeRule:
+    Type: AWS::Events::Rule
+    Properties:
+      ScheduleExpression: cron(*/2 * * * ? *)  # once every 2 minutes
+      State: ENABLED
+      Name: {{funcname}}-scheduled-run
+      Targets:
+        - Arn: !GetAtt Cluster.Arn
+          EcsParameters:
+            LaunchType: FARGATE
+            NetworkConfiguration:
+              AwsVpcConfiguration:
+                AssignPublicIp: ENABLED
+                Subnets:
+                  - subnet-51c2f525  # Sandbox Default VPC 2a
+                SecurityGroups:
+                  - sg-0a7a25e7d815399ce  # SSH from bastion and UCOP VPN
+            TaskCount: 1
+            TaskDefinitionArn: !Ref TaskDef
+          Id: Target0
+          Input: "{}"
+          RoleArn: !GetAtt EventsRole.Arn #}
