@@ -1,0 +1,3 @@
+template:
+  path: templates/pub-dspace-dev-solr.yaml.j2
+  type: file

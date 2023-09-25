@@ -2,10 +2,11 @@
 
 set -euo pipefail
 
-export AWS_PROFILE=cdl-pad-dev
-export FUNC=pub-dspace-dev
-export REGION=us-west-2
-export ACCT=866216109762
+# Set default values for variables (can override each by setting them in the environment)
+export AWS_PROFILE="${AWS_PROFILE:-cdl-pad-dev}"
+export FUNC="${FUNC:-pub-dspace-dev}"
+export REGION="${REGION:-us-west-2}"
+export ACCT="${ACCT:-866216109762}"
 
 # To defeat all docker caching, pass "--no-cache" on the command line and
 # it'll get passed through on the container build step.
@@ -20,6 +21,9 @@ export ACCT=866216109762
 # fi
 
 echo "===== Building Dockerfile for DSpace using Docker Desktop ====="
+# FIXME : I don't think "dspace" is a valid directory in this context
+# we'll need to refactor this to find and use the correct Docker-Compose files
+# we will need to run Docker-Compose to build our DSpace images, not podman
 cd dspace && docker build --pull --build-arg CACHEBUST=$(date -Idate) $* -t $FUNC .
 docker tag $FUNC:latest $ACCT.dkr.ecr.$REGION.amazonaws.com/$FUNC:latest
 
