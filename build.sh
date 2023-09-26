@@ -16,9 +16,6 @@ export BACKEND_IMAGE="${BACKEND_IMAGE:-backend}"
 export FRONTEND_IMAGE="${FRONTEND_IMAGE:-frontend}"
 export OTHER_IMAGES="${OTHER_IMAGES:-dspace/dspace-solr:${DSPACE_VER:-latest}}" # note that these images will be pushed to ECR, but not built, handy for copying images from DockerHub, etc.
 
-# To defeat all docker caching, pass "--no-cache" on the command line and
-# it'll get passed through on the container build step.
-
 echo "===== Building Docker images for DSpace using Docker Compose ====="
 docker-compose -f $BACKEND_SRC -f $FRONTEND_SRC build --pull $BACKEND_IMAGE $FRONTEND_IMAGE $OTHER_IMAGES
 docker tag $BACKEND_IMAGE:latest $ACCT.dkr.ecr.$REGION.amazonaws.com/$BACKEND_IMAGE:latest
