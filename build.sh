@@ -27,10 +27,13 @@ trivy --severity critical,high image --exit-code 1 --quiet --scanners vuln --ign
 echo "===== Logging in to AWS ECR ====="
 aws ecr get-login-password --region $REGION | docker login --username AWS --password-stdin $ACCT.dkr.ecr.$REGION.amazonaws.com
 
-echo "===== Pushing images to ECR ====="
+#TODO; use specific tags instead of latest
+echo "===== Pushing built images to ECR ====="
 docker push $ACCT.dkr.ecr.$REGION.amazonaws.com/${BACKEND_IMAGE}:latest
 docker push $ACCT.dkr.ecr.$REGION.amazonaws.com/${FRONTEND_IMAGE}:latest
 
+#TODO: use specific tags instead of latest
+echo "===== Pushing other images to ECR ====="
 for image in $OTHER_IMAGES; do
   docker push $ACCT.dkr.ecr.$REGION.amazonaws.com/${image}:latest
 done
