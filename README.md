@@ -29,6 +29,15 @@ Once you have the prerequisites installed and set up, you can use the build.sh
 script to build and deploy the Docker images to AWS ECR. You can then use 
 Sceptre to deploy and manage the infrastructure on AWS.
 
+> ## ℹ️ Use --dry-run
+>
+> Sceptre has a `--dry-run` option that allows you to preview the changes that 
+> would be made during a launch without actually creating or updating any 
+> resources. This is useful for testing and verifying your Sceptre templates 
+> before deploying them. You should add this flag to any `sceptre launch...`
+> command you enter, if it's the first time you've run the command, or any time
+> you feel a bit of caution is warranted.
+
 ## Deploying a Single Stack
 
 ```bash
