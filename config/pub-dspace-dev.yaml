@@ -1,3 +1,16 @@
-template:
-  path: templates/pub-dspace-dev-solr.yaml.j2
-  type: file
+---
+  environment: dev
+  template_path: templates/
+  stacks:
+    - name: backend
+      template_path: templates/backend.yaml.j2
+      parameters:
+        environment: ${{ environment }}
+    - name: frontend
+      template_path: templates/frontend.yaml.j2
+      parameters:
+        environment: ${{ environment }}
+    - name: solr
+      template_path: templates/solr.yaml.j2
+      parameters:
+        environment: ${{ environment }}

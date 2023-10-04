@@ -6,11 +6,7 @@ Description: >
 
 {% set funcname = parameters.funcname | default('pub-dspace-dev') %}
 {% set component = parameters.component | default('solr') %}
-{% set component_image = parameters.component_image | default('docker.io/dspace/dspace-solr:7.6') %}
-
-{% set funcname = 'pub-dspace-dev' %}
-{% set component = 'solr' %}
-{% set component_image = 'docker.io/dspace/dspace-solr:dspace-7.6' %} # can be a docker image name or a full url to an image in a registry, including DockerHub
+{% set component_image = parameters.component_image | default('docker.io/dspace/dspace-solr:7.6') %} # can be a docker image name or a full url to an image in a registry, including DockerHub
 
 Resources:
 
@@ -130,7 +126,6 @@ Resources:
             - ContainerPort: 8983
               HostPort: 8983
           Environment:
-            # TODO: use environment variables appropriate for DSpace, but use secretsmanager for credentials
               {% comment %}
               # tips copied from the dspace/dsapce docker, mostly here for reference when we work on the dspace-api container
               # Below syntax may look odd, but it is how to override dspace.cfg settings via env variables.
@@ -159,7 +154,7 @@ Resources:
               # proxies.trusted.ipranges: This setting is required for a REST API running in Docker to trust requests
               # from the host machine. This IP range MUST correspond to the 'dspacenet' subnet defined above.
               proxies__P__trusted__P__ipranges: '172.23.0'
-            {% endcomment %}
+            
             # example environment variables from Matomo infrastructure repo, left here as syntax reference
             # - Name: PHP_MEMORY_LIMIT
             #   Value: 8192M
@@ -173,6 +168,7 @@ Resources:
             #   Value: {% raw %}'{{resolve:secretsmanager:web-matomo-prd:SecretString:smtp_username}}'{% endraw %}
             # - Name: MATOMO_MAIL_PASSWORD
             #   Value: {% raw %}'{{resolve:secretsmanager:web-matomo-prd:SecretString:smtp_password}}'{% endraw %}
+            {% endcomment %}
       # TODO: set these to values that make sense for a prod-like DSpace Solr I container
       Cpu: 8192          # 8 CPUs
       Memory: 16384      # 16 GB RAM
