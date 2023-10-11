@@ -117,7 +117,7 @@ echo "The big thing we care about is that each image pushed has platform: "linux
 echo "If it's an arm64 image... we can't use it..."
 echo "More info here: https://docs.aws.amazon.com/cli/latest/reference/ecr/describe-image-scan-findings.html"
 for image in $IMAGES; do
-	echo "aws ecr describe-image-scan-findings --repository-name $(echo $image | cut -d':' -f1) --image-id imageTag=$(echo $image | cut -d':' -f2)"
+	echo "aws ecr describe-image-scan-findings --repository-name $(echo $image | cut -d':' -f1) --image-id imageTag=$(echo $image | cut -d':' -f2)" || true # AWS doesn't like re-running this command, so we'll just ignore the error
 done
 echo "========================"
 exit 0
