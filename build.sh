@@ -117,8 +117,6 @@ done
 
 echo "==== Build complete ===="
 echo "To validate this build, run the following commands after about ten minutes (the image scan takes a while):"
-echo "The big thing we care about is that each image pushed has platform: "linux/amd64" set... "
-echo "If it's an arm64 image... we can't use it..."
 echo "More info here: https://docs.aws.amazon.com/cli/latest/reference/ecr/describe-image-scan-findings.html"
 echo
 for image in $IMAGES; do
