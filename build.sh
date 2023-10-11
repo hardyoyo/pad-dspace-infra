@@ -1,7 +1,7 @@
 #!/bin/bash
 
 set -euo pipefail
-set -x  # uncomment to enable debugging
+# set -x  # uncomment to enable debugging
 
 # PREREQUISITES
 # you must create repositories in ECR for each image you want to push. Do this on the console:
