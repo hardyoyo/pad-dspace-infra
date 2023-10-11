@@ -120,7 +120,7 @@ echo "To validate this build, run the following commands after about ten minutes
 echo "More info here: https://docs.aws.amazon.com/cli/latest/reference/ecr/describe-image-scan-findings.html"
 echo
 for image in $IMAGES; do
-	echo "aws ecr describe-image-scan-findings --repository-name $(echo $image | cut -d':' -f1) --image-id imageTag=$(echo $image | cut -d':' -f2)" || true # AWS doesn't like re-running this command, so we'll just ignore the error
+	echo "aws ecr describe-image-scan-findings --repository-name $(echo $image | cut -d':' -f1) --image-id imageTag=$(echo $image | cut -d':' -f2)"
 done
 echo
 echo "========================"
