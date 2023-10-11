@@ -6,6 +6,8 @@ set -euo pipefail
 # PREREQUISITES
 # you must create repositories in ECR for each image you want to push. Do this on the console:
 # https://us-west-2.console.aws.amazon.com/ecr/repositories?region=us-west-2
+# or you can use the AWS CLI, e.g.:
+# aws ecr create-repository --repository-name dspace/dspace-cli --region us-west-2
 
 # detect if AWS_PROFILE is already set, and is different than the AWS_PROFILE we need to use
 export REQUIRED_AWS_PROFILE="cdl-pad-dev"
@@ -75,7 +77,7 @@ if [[ ! " ${SKIP_IMAGES[@]} " =~ "frontend" ]]; then
   IMAGES+=("$FRONTEND_IMAGE:$FRONTEND_IMAGE_TAG")
 fi
 if [[ ! " ${SKIP_IMAGES[@]} " =~ "other" ]]; then
-  IMAGES+=("dspace/dspace-solr:${BACKEND_IMAGE_TAG:-latest}")
+  IMAGES+=("${OTHER_IMAGES[@]}")
 fi
 
 echo "==== Pulling Docker images to our local repository ===="
@@ -108,7 +110,9 @@ aws ecr get-login-password --region $REGION | docker login --username AWS --pass
 echo "==== Pushing images to ECR, starting image scan ===="
 for image in $IMAGES; do
 	docker push $ACCT.dkr.ecr.$REGION.amazonaws.com/${image}
+	set +e #disable exit on error, because we don't care if the next request for an image scan fails
 	aws ecr start-image-scan --repository-name $(echo $image | cut -d':' -f1) --image-id imageTag=$(echo $image | cut -d':' -f2)
+	set -e #re-enable exit on error
 done
 
 echo "==== Build complete ===="
@@ -116,8 +120,10 @@ echo "To validate this build, run the following commands after about ten minutes
 echo "The big thing we care about is that each image pushed has platform: "linux/amd64" set... "
 echo "If it's an arm64 image... we can't use it..."
 echo "More info here: https://docs.aws.amazon.com/cli/latest/reference/ecr/describe-image-scan-findings.html"
+echo
 for image in $IMAGES; do
 	echo "aws ecr describe-image-scan-findings --repository-name $(echo $image | cut -d':' -f1) --image-id imageTag=$(echo $image | cut -d':' -f2)" || true # AWS doesn't like re-running this command, so we'll just ignore the error
 done
+echo
 echo "========================"
 exit 0
