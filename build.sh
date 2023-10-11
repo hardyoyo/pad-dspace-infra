@@ -18,9 +18,6 @@ if [[ -n "${AWS_PROFILE}" && "${AWS_PROFILE}" != "${REQUIRED_AWS_PROFILE}" ]]; t
 	echo "We advise you to re-authenticate via 'aws sso login' to ensure you have the correct credentials for this profile."
 fi
 
-
-#TODO: we'll need the CLI image eventually, add it to OTHER_IMAGES
-
 # Set default values for variables (can override each by setting them in the
 # environment)
 export DSPACE_VERSION_NUMBER="${DSPACE_VERSION_NUMBER:-7_x}" # it's important to use the 7_x maintenance tag, so we get bug fixes and security updates
@@ -99,10 +96,11 @@ for image in $IMAGES; do
 	docker tag ${image} $ACCT.dkr.ecr.$REGION.amazonaws.com/${image}
 done
 
-echo "===== Scanning for vulnerabilities ====="
-for image in $IMAGES; do
-	trivy --severity critical,high image --exit-code 1 --quiet --scanners vuln --ignore-unfixed ${image}
-done
+# removing Trivy for now, it's way too sensitive and slow, we'll use AWS ECR image scanning instead
+# echo "===== Scanning for vulnerabilities ====="
+# for image in $IMAGES; do
+# 	trivy --severity critical,high image --exit-code 1 --quiet --scanners vuln --ignore-unfixed ${image}
+# done
 
 echo "==== Logging in to AWS ECR ===="
 aws ecr get-login-password --region $REGION | docker login --username AWS --password-stdin $ACCT.dkr.ecr.$REGION.amazonaws.com
