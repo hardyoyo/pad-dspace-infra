@@ -107,15 +107,19 @@ done
 echo "==== Logging in to AWS ECR ===="
 aws ecr get-login-password --region $REGION | docker login --username AWS --password-stdin $ACCT.dkr.ecr.$REGION.amazonaws.com
 
-echo "==== Pushing images to ECR ===="
+echo "==== Pushing images to ECR, starting image scan ===="
 for image in $IMAGES; do
 	docker push $ACCT.dkr.ecr.$REGION.amazonaws.com/${image}
+	aws ecr start-image-scan --repository-name $(echo $image | cut -d':' -f1) --image-id imageTag=$(echo $image | cut -d':' -f2)
 done
 
-#TODO: validate this build by inspecting the images we just pushed
-# use aws ecr describe-image-scan-findings
-# more info here: https://docs.aws.amazon.com/cli/latest/reference/ecr/describe-image-scan-findings.html
-# the big thing we care about is that each image pushed has platform: "linux/amd64" set... if it's an arm64 image... we can't use it
-
 echo "==== Build complete ===="
+echo "To validate this build, run the following commands after about ten minutes (the image scan takes a while):"
+echo "The big thing we care about is that each image pushed has platform: "linux/amd64" set... "
+echo "If it's an arm64 image... we can't use it..."
+echo "More info here: https://docs.aws.amazon.com/cli/latest/reference/ecr/describe-image-scan-findings.html"
+for image in $IMAGES; do
+	echo "aws ecr describe-image-scan-findings --repository-name $(echo $image | cut -d':' -f1) --image-id imageTag=$(echo $image | cut -d':' -f2)"
+done
+echo "========================"
 exit 0
