@@ -6,12 +6,7 @@ set -euo pipefail
 # Check if an image should be skipped
 function should_skip_image() {
   local image_name="$1"
-  for skip_image in "${SKIP_IMAGES[@]}"; do
-    if [[ "$skip_image" == "$image_name" ]]; then
-      return 0
-    fi
-  done
-  return 1
+  ! [[ " ${SKIP_IMAGES[@]} " =~ " $image_name " ]]
 }
 
 # PREREQUISITES
@@ -46,6 +41,9 @@ export BACKEND_IMAGE_TAG="${DSPACE_VER:-latest}"
 export FRONTEND_IMAGE_TAG="cdl-latest-dist"
 export OTHER_IMAGES="${OTHER_IMAGES:-dspace/dspace-solr:${BACKEND_IMAGE_TAG:-latest} dspace/dspace-cli:${BACKEND_IMAGE_TAG:-latest}}" # note that these images will be pushed to ECR, but not built, handy for copying images from DockerHub, etc.
 
+# Flag to enable Trivy vulnerability scanning
+USE_TRIVY=false
+
 # Parse command-line options
 usage() {
   echo "Usage: $0 [-h] [--skip IMAGES]"
@@ -54,6 +52,7 @@ usage() {
   echo "Options:"
   echo "  -h, --help           Show this help message and exit"
   echo "  --skip IMAGES        Comma-delimited list of images to skip, valid values are 'backend', 'frontend', 'other'"
+  echo "  --use-trivy          Use Trivy to scan images for vulnerabilities before pushing them (default: false)"
   echo ""
 }
 
@@ -62,6 +61,10 @@ while [[ $# -gt 0 ]]; do
     -h|--help)
       usage
       exit 0
+      ;;
+    --use-trivy)
+      USE_TRIVY=true
+      shift
       ;;
     --skip)
       if [[ -z "$2" || "$2" == -* ]]; then
@@ -119,11 +122,15 @@ for image in $IMAGES; do
 	docker tag ${image} $ACCT.dkr.ecr.$REGION.amazonaws.com/${image}
 done
 
-# removing Trivy for now, it's way too sensitive and slow, we'll use AWS ECR image scanning instead
-# echo "===== Scanning for vulnerabilities ====="
-# for image in $IMAGES; do
-# 	trivy --severity critical,high image --exit-code 1 --quiet --scanners vuln --ignore-unfixed ${image}
-# done
+if $USE_TRIVY; then
+echo "===== Scanning for vulnerabilities with Trivy ====="
+  for image in $IMAGES; do
+    trivy --severity critical,high image --exit-code 0 --quiet --scanners vuln --ignore-unfixed ${image}
+  done
+else
+  echo "===== Skipping vulnerability scanning ====="
+fi
+
 
 echo "==== Logging in to AWS ECR ===="
 aws ecr get-login-password --region $REGION | docker login --username AWS --password-stdin $ACCT.dkr.ecr.$REGION.amazonaws.com
