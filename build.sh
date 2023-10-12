@@ -1,7 +1,6 @@
 #!/bin/bash
 
 set -euo pipefail
-# set -x  # uncomment to enable debugging
 
 # Check if an image should be skipped
 function should_skip_image() {
@@ -43,6 +42,7 @@ export OTHER_IMAGES="${OTHER_IMAGES:-dspace/dspace-solr:${BACKEND_IMAGE_TAG:-lat
 
 # Flag to enable Trivy vulnerability scanning
 USE_TRIVY=false
+VERBOSE_TRIVY=false
 
 # Parse command-line options
 usage() {
@@ -53,6 +53,8 @@ usage() {
   echo "  -h, --help           Show this help message and exit"
   echo "  --skip IMAGES        Comma-delimited list of images to skip, valid values are 'backend', 'frontend', 'other'"
   echo "  --use-trivy          Use Trivy to scan images for vulnerabilities before pushing them (default: false)"
+  echo "  --verbose            Print verbose Trivy scan results (default: false)"
+  echo "  --debug              Print debug information (off by default)"
   echo ""
 }
 
@@ -64,6 +66,14 @@ while [[ $# -gt 0 ]]; do
       ;;
     --use-trivy)
       USE_TRIVY=true
+      shift
+      ;;
+    --debug)
+      set -x
+      shift
+      ;;
+    --verbose)
+      VERBOSE_TRIVY=true
       shift
       ;;
     --skip)
@@ -125,7 +135,29 @@ done
 if $USE_TRIVY; then
 echo "===== Scanning for vulnerabilities with Trivy ====="
   for image in $IMAGES; do
-    trivy --severity critical,high image --exit-code 0 --quiet --scanners vuln --ignore-unfixed ${image}
+    if [[ "${VERBOSE_TRIVY}" == "false" ]]; then
+      echo -e "\n${image}: "
+      trivy --quiet image \
+    --format template \
+    --template '{{- $critical := 0 }}{{- $high := 0 }}{{- range . }}{{- range .Vulnerabilities }}{{- if  eq .Severity "CRITICAL" }}{{- $critical = add $critical 1 }}{{- end }}{{- if  eq .Severity "HIGH" }}{{- $high = add $high 1 }}{{- end }}{{- end }}{{- end }}Critical: {{ $critical }}, High: {{ $high }}' \
+    --severity critical,high \
+    --exit-code 0 \
+    --scanners vuln \
+    --ignore-unfixed \
+      ${image}
+      echo -e "\n\n"
+    else
+      echo -e "\n${image}: "
+      trivy --quiet image \
+        --format json \
+        --severity critical,high \
+        --exit-code 0 \
+        --scanners vuln \
+        --ignore-unfixed \
+        ${image} \
+        | yq -P
+        echo -e "\n\n"
+    fi
   done
 else
   echo "===== Skipping vulnerability scanning ====="
