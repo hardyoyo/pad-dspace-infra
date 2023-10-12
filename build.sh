@@ -3,6 +3,17 @@
 set -euo pipefail
 # set -x  # uncomment to enable debugging
 
+# Check if an image should be skipped
+function should_skip_image() {
+  local image_name="$1"
+  for skip_image in "${SKIP_IMAGES[@]}"; do
+    if [[ "$skip_image" == "$image_name" ]]; then
+      return 0
+    fi
+  done
+  return 1
+}
+
 # PREREQUISITES
 # you must create repositories in ECR for each image you want to push. Do this on the console:
 # https://us-west-2.console.aws.amazon.com/ecr/repositories?region=us-west-2
@@ -85,12 +96,22 @@ for image in $OTHER_IMAGES; do
     docker pull --platform linux/amd64 ${image} # note that image strings should include tags, otherwise you're getting "latest", which may not be what you want
 done
 
-# save this for later, skip building for now
-# echo "==== Building Docker images for DSpace using Docker Compose ===="
-# docker-compose -f $BACKEND_SRC -f $FRONTEND_SRC build --progress tty
+# Build Docker images for DSpace using Docker Compose
+echo "==== Building Docker images for DSpace using Docker Compose ===="
 
+# Build backend image if not skipped
+if should_skip_image "backend"; then
+  echo "Skipping backend image build"
+else
+  docker-compose -f $BACKEND_SRC build --progress tty dspace
+fi
 
-
+# Build frontend image if not skipped
+if should_skip_image "frontend"; then
+  echo "Skipping frontend image build"
+else
+  docker-compose -f $FRONTEND_SRC build --progress tty dspace-angular
+fi
 
 echo "==== Tagging Docker images so they can be pushed ===="
 #docker tag image:tag $ACCT.dkr.ecr.$REGION.amazonaws.com/image:tag
@@ -107,12 +128,9 @@ done
 echo "==== Logging in to AWS ECR ===="
 aws ecr get-login-password --region $REGION | docker login --username AWS --password-stdin $ACCT.dkr.ecr.$REGION.amazonaws.com
 
-echo "==== Pushing images to ECR, starting image scan ===="
+echo "==== Pushing images to ECR ===="
 for image in $IMAGES; do
 	docker push $ACCT.dkr.ecr.$REGION.amazonaws.com/${image}
-	set +e #disable exit on error, because we don't care if the next request for an image scan fails
-	aws ecr start-image-scan --repository-name $(echo $image | cut -d':' -f1) --image-id imageTag=$(echo $image | cut -d':' -f2)
-	set -e #re-enable exit on error
 done
 
 echo "==== Build complete ===="
