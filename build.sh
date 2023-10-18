@@ -41,7 +41,7 @@ export FRONTEND_IMAGE_TAG="cdl-latest-dist"
 export OTHER_IMAGES="${OTHER_IMAGES:-dspace/dspace-solr:${BACKEND_IMAGE_TAG:-latest} dspace/dspace-cli:${BACKEND_IMAGE_TAG:-latest}}" # note that these images will be pushed to ECR, but not built, handy for copying images from DockerHub, etc.
 
 # Flag to enable Trivy vulnerability scanning
-USE_TRIVY=false
+USE_TRIVY=true
 VERBOSE_TRIVY=false
 
 # Parse command-line options
@@ -52,7 +52,7 @@ usage() {
   echo "Options:"
   echo "  -h, --help           Show this help message and exit"
   echo "  --skip IMAGES        Comma-delimited list of images to skip, valid values are 'backend', 'frontend', 'other'"
-  echo "  --use-trivy          Use Trivy to scan images for vulnerabilities before pushing them (default: false)"
+  echo "  --no-trivy           Don't use Trivy to scan images for vulnerabilities before pushing them (trivy on by default)"
   echo "  --verbose            Print verbose Trivy scan results (default: false)"
   echo "  --debug              Print debug information (off by default)"
   echo ""
@@ -64,8 +64,8 @@ while [[ $# -gt 0 ]]; do
       usage
       exit 0
       ;;
-    --use-trivy)
-      USE_TRIVY=true
+    --no-trivy)
+      USE_TRIVY=false
       shift
       ;;
     --debug)
