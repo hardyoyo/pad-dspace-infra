@@ -1,0 +1,6 @@
+---
+template_path: config/templates/solr/solr.yaml.j2
+parameters:
+  funcname: pub-dspace-dev
+  component: solr
+  component_image: docker.io/dspace/dspace-solr:7.6

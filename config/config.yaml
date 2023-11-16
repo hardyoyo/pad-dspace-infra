@@ -1,3 +1,5 @@
-project_code: cdl
+---
+project_code: PAD-DSpace-Infra
 profile: cdl-pad-dev
 region: us-west-2
+stack_group: PAD-DSpace-Infra-stack-group
