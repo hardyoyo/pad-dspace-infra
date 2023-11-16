@@ -10,6 +10,8 @@ deploy a frontend, backend, and Solr service. The combination of these services
 provides CDL with a DSpace instance. The project includes individual templates 
 for each stack, and uses Sceptre to manage the infrastructure as code.
 
+Remember: Sceptre is for infrastructure, build.sh is for pushing images into ECR.
+
 ## Stacks
 The project includes the following stacks:
 

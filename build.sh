@@ -2,11 +2,21 @@
 
 set -euo pipefail
 
-# Check if an image should be skipped
 function should_skip_image() {
   local image_name="$1"
-  ! [[ " ${SKIP_IMAGES[@]} " =~ " $image_name " ]]
+  local skip_images=(${SKIP_IMAGES//,/ })
+  for skip_image in "${skip_images[@]}"; do
+    if [[ "$image_name" == "$skip_image" ]]; then
+      # echo "DEBUG: should_skip_image: Skipping $image_name"
+      return 0 # zero = true in Bash
+    fi
+  done
+  # echo "DEBUG: should_skip_image: Not skipping $image_name"
+  return 1 # one = false in Bash
 }
+
+
+
 
 # PREREQUISITES
 # you must create repositories in ECR for each image you want to push. Do this on the console:
@@ -94,14 +104,15 @@ done
 
 # Build list of images to push
 IMAGES=()
+
 if [[ ! " ${SKIP_IMAGES[@]} " =~ "backend" ]]; then
-  IMAGES+=("$BACKEND_IMAGE:$BACKEND_IMAGE_TAG")
+      IMAGES+=("$BACKEND_IMAGE:$BACKEND_IMAGE_TAG")
 fi
 if [[ ! " ${SKIP_IMAGES[@]} " =~ "frontend" ]]; then
-  IMAGES+=("$FRONTEND_IMAGE:$FRONTEND_IMAGE_TAG")
+      IMAGES+=("$FRONTEND_IMAGE:$FRONTEND_IMAGE_TAG")
 fi
 if [[ ! " ${SKIP_IMAGES[@]} " =~ "other" ]]; then
-  IMAGES+=("${OTHER_IMAGES[@]}")
+      IMAGES+=("${OTHER_IMAGES[@]}")
 fi
 
 echo "==== Pulling Docker images to our local repository ===="
@@ -113,14 +124,18 @@ done
 echo "==== Building Docker images for DSpace using Docker Compose ===="
 
 # Build backend image if not skipped
-if should_skip_image "backend"; then
+# echo "DEBUG: IMAGES=${IMAGES[@]}"
+# echo "DEBUG: SKIP_IMAGES=${SKIP_IMAGES[@]}"
+# echo "DEBUG: should_skip_image backend: $(should_skip_image 'backend')"
+
+if $(should_skip_image "backend"); then
   echo "Skipping backend image build"
 else
   docker-compose -f $BACKEND_SRC build --progress tty dspace
 fi
 
 # Build frontend image if not skipped
-if should_skip_image "frontend"; then
+if $(should_skip_image "frontend"); then
   echo "Skipping frontend image build"
 else
   docker-compose -f $FRONTEND_SRC build --progress tty dspace-angular
