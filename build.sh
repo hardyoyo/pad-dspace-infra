@@ -40,8 +40,10 @@ fi
 export DSPACE_VERSION_NUMBER="${DSPACE_VERSION_NUMBER:-7_x}" # it's important to use the 7_x maintenance tag, so we get bug fixes and security updates
 export DSPACE_VER="dspace-${DSPACE_VERSION_NUMBER}"
 export DSPACE_WORKSPACE="${HOME}/dspace-workspace"
-export BACKEND_SRC="${DSPACE_WORKSPACE}/dspace/docker-compose-cdl.yml"
-export FRONTEND_SRC="${DSPACE_WORKSPACE}/dspace-angular/docker/docker-compose-cdl-dist.yml"
+export FRONTEND_PATH="${DSPACE_WORKSPACE}/dspace-angular"
+export BACKEND_PATH="${DSPACE_WORKSPACE}/dspace"
+export BACKEND_SRC="${BACKEND_PATH}/docker-compose-cdl.yml"
+export FRONTEND_SRC="${FRONTEND_PATH}/docker/docker-compose-cdl-dist.yml"
 export REGION="${REGION:-us-west-2}"
 export ACCT="${ACCT:-866216109762}"
 export BACKEND_IMAGE="${BACKEND_IMAGE:-dspace/dspace}"
@@ -49,6 +51,8 @@ export FRONTEND_IMAGE="${FRONTEND_IMAGE:-cdl/dspace-angular}"
 export BACKEND_IMAGE_TAG="${DSPACE_VER:-latest}"
 export FRONTEND_IMAGE_TAG="cdl-latest-dist"
 export OTHER_IMAGES="${OTHER_IMAGES:-dspace/dspace-solr:${BACKEND_IMAGE_TAG:-latest} dspace/dspace-cli:${BACKEND_IMAGE_TAG:-latest}}" # note that these images will be pushed to ECR, but not built, handy for copying images from DockerHub, etc.
+export FRONTEND_URI="${ACCT}.dkr.ecr.${REGION}.amazonaws.com/${FRONTEND_IMAGE}"
+export BACKEND_URI="${ACCT}.dkr.ecr.${REGION}.amazonaws.com/${BACKEND_IMAGE}"
 
 # Flag to enable Trivy vulnerability scanning
 USE_TRIVY=true
@@ -131,14 +135,19 @@ echo "==== Building Docker images for DSpace using Docker Compose ===="
 if $(should_skip_image "backend"); then
   echo "Skipping backend image build"
 else
-  docker-compose -f $BACKEND_SRC build --progress tty dspace
+  #Use buildx instead of docker-compose to build and push a multi-platform image
+  # docker-compose -f $BACKEND_SRC build --progress tty dspace
+  docker buildx create --use
+  cd $BACKEND_PATH && buildx create --use && docker buildx build --platform linux/arm64,linux/amd64 -t $BACKEND_URI dspace --push
 fi
 
 # Build frontend image if not skipped
 if $(should_skip_image "frontend"); then
   echo "Skipping frontend image build"
 else
-  docker-compose -f $FRONTEND_SRC build --progress tty dspace-angular
+  #Use buildx instead of docker-compose to build and push a multi-platform image
+  # docker-compose -f $FRONTEND_SRC build --progress tty dspace-angular
+  cd $FRONTEND_PATH && buildx create --use && docker buildx build --platform linux/arm64,linux/amd64 -t $FRONTEND_URI dspace-angular --push
 fi
 
 echo "==== Tagging Docker images so they can be pushed ===="
