@@ -12,7 +12,7 @@ export FUNC=pub-dspace-dev
 
 # Function to display script usage
 show_usage() {
-    echo "Usage: $0 <service/task_name> e.g. backend, frontend, solr"
+    echo "Usage: $0 <service_component> e.g. backend, frontend, solr"
     echo "Example: $0 backend"
     echo "NOTE: you must have configured the appropriate IAM role"
     echo "and permissions for the container, and the container"
