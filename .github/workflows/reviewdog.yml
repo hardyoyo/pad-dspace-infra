@@ -42,7 +42,7 @@ jobs:
     steps:
       - uses: actions/checkout@v2
       - name: Run dotenv-linter
-        uses: dontenv-linter/action-dotenv-linter@v2
+        uses: dontenv-linter/action-dotenv-linter@v2.18.0
         with:
           github_token: ${{ secrets.github_token }}
           reporter: github-pr-review # Default is github-pr-check
