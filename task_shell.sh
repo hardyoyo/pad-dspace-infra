@@ -21,13 +21,13 @@ show_usage() {
     exit 1
 }
 
-# Check if '-h' or '--help' is provided as an argument
-if [[ "$1" == '-h' || "$1" == '--help' ]]; then
+# Check if no service/task name is provided or too many parameters are given
+if test "$#" -ne 1; then
     show_usage
 fi
 
-# Check if no service/task name is provided or too many parameters are given
-if [ $# -ne 1 ]; then
+# Check if '-h' or '--help' is provided as an argument
+if [[ "$1" == '-h' || "$1" == '--help' ]]; then
     show_usage
 fi
 
