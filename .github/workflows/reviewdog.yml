@@ -44,5 +44,7 @@ jobs:
       - name: Run dotenv-linter
         uses: dontenv-linter/action-dotenv-linter@v2
         with:
+          github_token: ${{ secrets.github_token }}
           reporter: github-pr-review # Default is github-pr-check
+          fail_on_error: true
           dotenv_linter_flags: --skip UnorderedKey,LowercaseKey
