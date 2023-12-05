@@ -1,0 +1,38 @@
+---
+family: pub-dspace-dev-solr
+containerDefinitions: - name: pub-dspace-dev-solr
+  image: docker.io/dspace/dspace-solr:dspace-7_x
+  cpu: 1024
+  portMappings:
+    - containerPort: 8983
+      hostPort: 8983
+      protocol: tcp
+      name: pub-dspace-dev-solr-8983-tcp
+      appProtocol: http
+  essential: true
+  entryPoint:
+    - /bin/bash
+    - -c
+    - set -x; chown 8983:8983 /var/solr; /opt/docker-solr/scripts/init-var-solr; core_copy() { core=$1; path=$2; [ ! -d "/var/solr/data/$core" ] && cp -r "$path"/* "/var/solr/data/$core" && echo "Core '$core' files copied successfully!"; /opt/docker-solr/scripts/precreate-core "$core" "$path"; }; core_copy authority /opt/solr/server/solr/configsets/authority; core_copy oai /opt/solr/server/solr/configsets/oai; core_copy search /opt/solr/server/solr/configsets/search; core_copy statistics /opt/solr/server/solr/configsets/statistics; /opt/docker-solr/scripts/solr-foreground
+  environment: []
+  mountPoints:
+    - sourceVolume: pub-dspace-var-solr
+      containerPath: /var/solr
+      readOnly: false
+  volumesFrom: []
+  workingDirectory: /var/solr/data
+  logConfiguration:
+    logDriver: awslogs
+    options:
+      awslogs-create-group: "true"
+      awslogs-group: /ecs/pub-dspace-dev-solr
+      awslogs-region: us-west-2
+      awslogs-stream-prefix: ecs
+  healthCheck:
+    command:
+      - CMD-SHELL
+      - curl -sS http://localhost:8983 > /dev/null || exit 2
+    interval: 5
+    timeout: 5
+    retries: 3
+    startPeriod: 30

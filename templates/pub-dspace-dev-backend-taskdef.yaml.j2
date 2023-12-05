@@ -1,0 +1,39 @@
+---
+family: pub-dspace-dev-backend
+containerDefinitions: - name: dspace-backend
+  image: docker.io/dspace/dspace:dspace-7_x
+  cpu: 2048
+  portMappings:
+    - containerPort: 8080
+      hostPort: 8080
+      protocol: tcp
+      name: dspace-backend-8080-tcp
+      appProtocol: http
+  essential: true
+  environment: []
+  environmentFiles:
+    - value: arn:aws:s3:::pub-dspace-dev-config/env/pub-dspace-dev.env
+      type: s3
+  mountPoints: []
+  volumesFrom: []
+  secrets:
+    - name: db__P__password
+      valueFrom: arn:aws:secretsmanager:us-west-2:866216109762:secret:pub-dspace-dev-db-dspace-rvqbmx
+    - name: mail__P__server__P__password
+      valueFrom: arn:aws:secretsmanager:us-west-2:866216109762:secret:pub-dspace-dev-mail-server-lYYNhw
+  logConfiguration:
+    logDriver: awslogs
+    options:
+      awslogs-create-group: "true"
+      awslogs-group: /ecs/
+      awslogs-region: us-west-2
+      awslogs-stream-prefix: ecs
+    secretOptions: []
+  healthCheck:
+    command:
+      - CMD-SHELL
+      - ps -ef | grep -q '[t]omcat' || exit 2
+    interval: 5
+    timeout: 5
+    retries: 3
+    startPeriod: 30
