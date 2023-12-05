@@ -24,6 +24,6 @@ dotenv-linter -rq
 
 echo "Pushing all dotenv files to S3..."
 # Copy dotenv file to S3 bucket
-aws s3 cp $DOTENV_FILES "s3://$S3_BUCKET/$S3_FOLDER/"
+aws s3 cp "$DOTENV_FILES" "s3://$S3_BUCKET/$S3_FOLDER/"
 
 exit 0
