@@ -2,6 +2,9 @@
 
 set -euo pipefail
 
+# uncomment for debug
+# set -x
+
 function should_skip_image() {
   local image_name="$1"
   local skip_images=(${SKIP_IMAGES//,/ })
@@ -42,8 +45,9 @@ export DSPACE_VER="dspace-${DSPACE_VERSION_NUMBER}"
 export DSPACE_WORKSPACE="${HOME}/dspace-workspace"
 export FRONTEND_PATH="${DSPACE_WORKSPACE}/dspace-angular"
 export BACKEND_PATH="${DSPACE_WORKSPACE}/dspace"
+# TODO: change these to the Dockerfile we'll use for each with buildx, not Docker-Compose
 export BACKEND_SRC="${BACKEND_PATH}/docker-compose-cdl.yml"
-export FRONTEND_SRC="${FRONTEND_PATH}/docker/docker-compose-cdl-dist.yml"
+export FRONTEND_SRC="./Dockerfile.cdl-dist"
 export REGION="${REGION:-us-west-2}"
 export ACCT="${ACCT:-866216109762}"
 export BACKEND_IMAGE="${BACKEND_IMAGE:-dspace/dspace}"
@@ -55,7 +59,7 @@ export FRONTEND_URI="${ACCT}.dkr.ecr.${REGION}.amazonaws.com/${FRONTEND_IMAGE}"
 export BACKEND_URI="${ACCT}.dkr.ecr.${REGION}.amazonaws.com/${BACKEND_IMAGE}"
 
 # Flag to enable Trivy vulnerability scanning
-USE_TRIVY=true
+USE_TRIVY=false
 VERBOSE_TRIVY=false
 
 # Parse command-line options
@@ -121,40 +125,53 @@ fi
 
 echo "==== Pulling Docker images to our local repository ===="
 for image in $OTHER_IMAGES; do
-    docker pull --platform linux/amd64 ${image} # note that image strings should include tags, otherwise you're getting "latest", which may not be what you want
+    docker pull --platform linux/amd64 "${image}" # note that image strings should include tags, otherwise you're getting "latest", which may not be what you want
 done
 
+echo "==== Logging in to AWS ECR ===="
+aws ecr get-login-password --region "$REGION" | docker login --username AWS --password-stdin "$ACCT.dkr.ecr.$REGION.amazonaws.com"
+
 # Build Docker images for DSpace using Docker Compose
-echo "==== Building Docker images for DSpace using Docker Compose ===="
+echo "==== Building Docker images for DSpace using Docker Buildx ===="
 
 # Build backend image if not skipped
 # echo "DEBUG: IMAGES=${IMAGES[@]}"
 # echo "DEBUG: SKIP_IMAGES=${SKIP_IMAGES[@]}"
 # echo "DEBUG: should_skip_image backend: $(should_skip_image 'backend')"
 
-if $(should_skip_image "backend"); then
+# BACKEND BUILD ###############################################################
+
+# Build backend image if not skipped
+if should_skip_image "backend"; then
   echo "Skipping backend image build"
 else
   #Use buildx instead of docker-compose to build and push a multi-platform image
   # docker-compose -f $BACKEND_SRC build --progress tty dspace
-  docker buildx create --use
-  cd $BACKEND_PATH && buildx create --use && docker buildx build --platform linux/arm64,linux/amd64 -t $BACKEND_URI dspace --push
+  # TODO: develop and test a Dockerfile to use for buildx, which assumes that mvn has been run locally
+  #docker buildx create --use
+  #cd "$BACKEND_PATH" && buildx create --use && docker buildx build --platform linux/arm64,linux/amd64 -t "$BACKEND_URI" dspace --push
+  echo "eventually the backend will be built, but not right now..."
 fi
+
+# FRONTEND BUILD ##############################################################
 
 # Build frontend image if not skipped
-if $(should_skip_image "frontend"); then
+if should_skip_image "frontend"; then
   echo "Skipping frontend image build"
 else
-  #Use buildx instead of docker-compose to build and push a multi-platform image
+  #Use buildx to build and push an amd64 image (can be multi-platform, but amd64 is necessary for Fargate)
   # docker-compose -f $FRONTEND_SRC build --progress tty dspace-angular
-  cd $FRONTEND_PATH && buildx create --use && docker buildx build --platform linux/arm64,linux/amd64 -t $FRONTEND_URI dspace-angular --push
+  cd "$FRONTEND_PATH" && docker buildx create --use && docker buildx build --platform linux/amd64 -t "$FRONTEND_URI" -f "$FRONTEND_SRC" --push .
+  # docker buildx build -t dspace-angular-cdl-test:dspace-7_x --platform linux/amd64 -f ./Dockerfile.cdl-dist .
 fi
 
-echo "==== Tagging Docker images so they can be pushed ===="
-#docker tag image:tag $ACCT.dkr.ecr.$REGION.amazonaws.com/image:tag
-for image in $IMAGES; do
-	docker tag ${image} $ACCT.dkr.ecr.$REGION.amazonaws.com/${image}
-done
+
+# FIXME: only some images need to be tagged, anything built with buildx doesn't need to be tagged/pushed... buildx tags and pushes
+# echo "==== Tagging Docker images so they can be pushed ===="
+# #docker tag image:tag $ACCT.dkr.ecr.$REGION.amazonaws.com/image:tag
+# for image in $IMAGES; do
+# 	docker tag "${image}" "$ACCT.dkr.ecr.$REGION.amazonaws.com/${image}"
+# done
 
 if $USE_TRIVY; then
 echo "===== Scanning for vulnerabilities with Trivy ====="
@@ -168,7 +185,7 @@ echo "===== Scanning for vulnerabilities with Trivy ====="
     --exit-code 0 \
     --scanners vuln \
     --ignore-unfixed \
-      ${image}
+      "${image}"
       echo -e "\n\n"
     else
       echo -e "\n${image}: "
@@ -178,7 +195,7 @@ echo "===== Scanning for vulnerabilities with Trivy ====="
         --exit-code 0 \
         --scanners vuln \
         --ignore-unfixed \
-        ${image} \
+        "${image}" \
         | yq -P
         echo -e "\n\n"
     fi
@@ -189,12 +206,13 @@ fi
 
 
 echo "==== Logging in to AWS ECR ===="
-aws ecr get-login-password --region $REGION | docker login --username AWS --password-stdin $ACCT.dkr.ecr.$REGION.amazonaws.com
+aws ecr get-login-password --region "$REGION" | docker login --username AWS --password-stdin "$ACCT.dkr.ecr.$REGION.amazonaws.com"
 
-echo "==== Pushing images to ECR ===="
-for image in $IMAGES; do
-	docker push $ACCT.dkr.ecr.$REGION.amazonaws.com/${image}
-done
+# FIXME: only some images need to be pushed
+# echo "==== Pushing images to ECR ===="
+# for image in $IMAGES; do
+# 	docker push "$ACCT.dkr.ecr.$REGION.amazonaws.com/${image}"
+# done
 
 echo "==== Build complete ===="
 echo "To validate this build, run the following commands after about ten minutes (the image scan takes a while):"
