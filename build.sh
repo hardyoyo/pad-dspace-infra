@@ -8,7 +8,7 @@ set -euo pipefail
 
 function should_skip_image() {
   local image_name="$1"
-  local skip_images=("${SKIP_IMAGES//,/ }")
+  local skip_images=(${SKIP_IMAGES//,/ })
   for skip_image in "${skip_images[@]}"; do
     if [[ "$image_name" == "$skip_image" ]]; then
       # echo "DEBUG: should_skip_image: Skipping $image_name"
@@ -121,21 +121,16 @@ if [[ ! " ${SKIP_IMAGES[@]} " =~ "other" ]]; then
       IMAGES+=("${OTHER_IMAGES[@]}")
 fi
 
-echo "==== Pulling Docker images to our local registry ===="
-for image in $OTHER_IMAGES; do
-    docker pull -q --platform linux/amd64 "${image}" # note that image strings should include tags, otherwise you're getting "latest", which may not be what you want
-done
-
-# echo "==== Logging in to AWS ECR ===="
-# aws ecr get-login-password --region "$REGION" | docker login --username AWS --password-stdin "$ACCT.dkr.ecr.$REGION.amazonaws.com"
+if [[ ! " ${SKIP_IMAGES[@]} " =~ "other" ]]; then
+    echo "==== Pulling Docker images to our local registry ===="
+    for image in $OTHER_IMAGES; do
+        docker pull -q --platform linux/amd64 "${image}" # note that image strings should include tags, otherwise you're getting "latest", which may not be what you want
+    done
+fi
 
 # Build Docker images for DSpace using Docker Compose
 echo "==== Building Docker images for DSpace using Docker Buildx, for local registry ===="
-
-# Build backend image if not skipped
-# echo "DEBUG: IMAGES=${IMAGES[@]}"
-# echo "DEBUG: SKIP_IMAGES=${SKIP_IMAGES[@]}"
-# echo "DEBUG: should_skip_image backend: $(should_skip_image 'backend')"
+echo "🕒 Hang tight, buildx builders take a while..."
 
 # BACKEND BUILD ###############################################################
 
@@ -158,13 +153,16 @@ if should_skip_image "frontend"; then
   echo "Skipping frontend image build"
 else
   #Use buildx to build and push an amd64 image (can be multi-platform, but amd64 is necessary for Fargate)
-  cd "$FRONTEND_PATH" && docker buildx create --use && docker buildx build --platform linux/amd64 -t "$FRONTEND_IMAGE:$FRONTEND_IMAGE_TAG" -f "$FRONTEND_SRC" --load .
+  echo "Shipping this build to the following builder (it'll be named something weird, don't worry about it)..."
+  cd "$FRONTEND_PATH" && docker buildx create --use && docker buildx build --no-cache --platform linux/amd64 -q -t "$FRONTEND_IMAGE:$FRONTEND_IMAGE_TAG" -f "$FRONTEND_SRC" --load .
 fi
 
 
 echo "==== Tagging Docker images so they can be pushed ===="
 for image in "${IMAGES[@]}"; do
-	docker tag "${image}" "$ACCT.dkr.ecr.$REGION.amazonaws.com/${image}"
+	set -x # turning debug on... a poor man's verbose, no such thing as -v for docker tag
+    docker tag "${image}" "$ACCT.dkr.ecr.$REGION.amazonaws.com/${image}"
+    set +x # turning debug off
 done
 
 if $USE_TRIVY; then
