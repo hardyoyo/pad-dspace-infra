@@ -161,11 +161,7 @@ if should_skip_image "frontend"; then
   echo "Skipping frontend image build"
 else
   #Use buildx to build and push an amd64 image (can be multi-platform, but amd64 is necessary for Fargate)
-  # docker-compose -f $FRONTEND_SRC build --progress tty dspace-angular
-  # echo "FRONTEND_IMAGE = $FRONTEND_IMAGE"
-  # echo "FRONTEND_URI = $FRONTEND_URI"
   cd "$FRONTEND_PATH" && docker buildx create --use && docker buildx build --platform linux/amd64 -t "$FRONTEND_IMAGE:$FRONTEND_IMAGE_TAG" -f "$FRONTEND_SRC" --load .
-  # docker buildx build -t dspace-angular-cdl-test:dspace-7_x --platform linux/amd64 -f ./Dockerfile.cdl-dist .
 fi
 
 
