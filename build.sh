@@ -1,4 +1,5 @@
 #!/bin/bash
+# shellcheck disable=SC2199
 
 set -euo pipefail
 
@@ -7,7 +8,7 @@ set -euo pipefail
 
 function should_skip_image() {
   local image_name="$1"
-  local skip_images=(${SKIP_IMAGES//,/ })
+  local skip_images=("${SKIP_IMAGES//,/ }")
   for skip_image in "${skip_images[@]}"; do
     if [[ "$image_name" == "$skip_image" ]]; then
       # echo "DEBUG: should_skip_image: Skipping $image_name"
@@ -59,7 +60,7 @@ export FRONTEND_URI="${ACCT}.dkr.ecr.${REGION}.amazonaws.com/${FRONTEND_IMAGE}"
 export BACKEND_URI="${ACCT}.dkr.ecr.${REGION}.amazonaws.com/${BACKEND_IMAGE}"
 
 # Flag to enable Trivy vulnerability scanning
-USE_TRIVY=false
+USE_TRIVY=true
 VERBOSE_TRIVY=false
 
 # Parse command-line options
@@ -123,16 +124,16 @@ if [[ ! " ${SKIP_IMAGES[@]} " =~ "other" ]]; then
       IMAGES+=("${OTHER_IMAGES[@]}")
 fi
 
-echo "==== Pulling Docker images to our local repository ===="
+echo "==== Pulling Docker images to our local registry ===="
 for image in $OTHER_IMAGES; do
-    docker pull --platform linux/amd64 "${image}" # note that image strings should include tags, otherwise you're getting "latest", which may not be what you want
+    docker pull -q --platform linux/amd64 "${image}" # note that image strings should include tags, otherwise you're getting "latest", which may not be what you want
 done
 
-echo "==== Logging in to AWS ECR ===="
-aws ecr get-login-password --region "$REGION" | docker login --username AWS --password-stdin "$ACCT.dkr.ecr.$REGION.amazonaws.com"
+# echo "==== Logging in to AWS ECR ===="
+# aws ecr get-login-password --region "$REGION" | docker login --username AWS --password-stdin "$ACCT.dkr.ecr.$REGION.amazonaws.com"
 
 # Build Docker images for DSpace using Docker Compose
-echo "==== Building Docker images for DSpace using Docker Buildx ===="
+echo "==== Building Docker images for DSpace using Docker Buildx, for local registry ===="
 
 # Build backend image if not skipped
 # echo "DEBUG: IMAGES=${IMAGES[@]}"
@@ -161,23 +162,25 @@ if should_skip_image "frontend"; then
 else
   #Use buildx to build and push an amd64 image (can be multi-platform, but amd64 is necessary for Fargate)
   # docker-compose -f $FRONTEND_SRC build --progress tty dspace-angular
-  cd "$FRONTEND_PATH" && docker buildx create --use && docker buildx build --platform linux/amd64 -t "$FRONTEND_URI" -f "$FRONTEND_SRC" --push .
+  # echo "FRONTEND_IMAGE = $FRONTEND_IMAGE"
+  # echo "FRONTEND_URI = $FRONTEND_URI"
+  cd "$FRONTEND_PATH" && docker buildx create --use && docker buildx build --platform linux/amd64 -t "$FRONTEND_IMAGE:$FRONTEND_IMAGE_TAG" -f "$FRONTEND_SRC" --load .
   # docker buildx build -t dspace-angular-cdl-test:dspace-7_x --platform linux/amd64 -f ./Dockerfile.cdl-dist .
 fi
 
 
-# FIXME: only some images need to be tagged, anything built with buildx doesn't need to be tagged/pushed... buildx tags and pushes
-# echo "==== Tagging Docker images so they can be pushed ===="
-# #docker tag image:tag $ACCT.dkr.ecr.$REGION.amazonaws.com/image:tag
-# for image in $IMAGES; do
-# 	docker tag "${image}" "$ACCT.dkr.ecr.$REGION.amazonaws.com/${image}"
-# done
+echo "==== Tagging Docker images so they can be pushed ===="
+for image in "${IMAGES[@]}"; do
+	docker tag "${image}" "$ACCT.dkr.ecr.$REGION.amazonaws.com/${image}"
+done
 
 if $USE_TRIVY; then
 echo "===== Scanning for vulnerabilities with Trivy ====="
-  for image in $IMAGES; do
+  for image in "${IMAGES[@]}"; do
+    image_id=$(docker inspect -f '{{.Id}}' "${image}")
     if [[ "${VERBOSE_TRIVY}" == "false" ]]; then
       echo -e "\n${image}: "
+      # shellcheck disable=SC2016
       trivy --quiet image \
     --format template \
     --template '{{- $critical := 0 }}{{- $high := 0 }}{{- range . }}{{- range .Vulnerabilities }}{{- if  eq .Severity "CRITICAL" }}{{- $critical = add $critical 1 }}{{- end }}{{- if  eq .Severity "HIGH" }}{{- $high = add $high 1 }}{{- end }}{{- end }}{{- end }}Critical: {{ $critical }}, High: {{ $high }}' \
@@ -185,7 +188,7 @@ echo "===== Scanning for vulnerabilities with Trivy ====="
     --exit-code 0 \
     --scanners vuln \
     --ignore-unfixed \
-      "${image}"
+      "${image_id}"
       echo -e "\n\n"
     else
       echo -e "\n${image}: "
@@ -195,7 +198,7 @@ echo "===== Scanning for vulnerabilities with Trivy ====="
         --exit-code 0 \
         --scanners vuln \
         --ignore-unfixed \
-        "${image}" \
+        "${image_id}" \
         | yq -P
         echo -e "\n\n"
     fi
@@ -208,18 +211,17 @@ fi
 echo "==== Logging in to AWS ECR ===="
 aws ecr get-login-password --region "$REGION" | docker login --username AWS --password-stdin "$ACCT.dkr.ecr.$REGION.amazonaws.com"
 
-# FIXME: only some images need to be pushed
-# echo "==== Pushing images to ECR ===="
-# for image in $IMAGES; do
-# 	docker push "$ACCT.dkr.ecr.$REGION.amazonaws.com/${image}"
-# done
+echo "==== Pushing images to ECR ===="
+for image in "${IMAGES[@]}"; do
+	docker push "$ACCT.dkr.ecr.$REGION.amazonaws.com/${image}"
+done
 
 echo "==== Build complete ===="
 echo "To validate this build, run the following commands after about ten minutes (the image scan takes a while):"
 echo "More info here: https://docs.aws.amazon.com/cli/latest/reference/ecr/describe-image-scan-findings.html"
 echo
-for image in $IMAGES; do
-	echo "aws ecr describe-image-scan-findings --repository-name $(echo $image | cut -d':' -f1) --image-id imageTag=$(echo $image | cut -d':' -f2)"
+for image in "${IMAGES[@]}"; do
+	echo "aws ecr describe-image-scan-findings --repository-name $(echo "$image" | cut -d':' -f1) --image-id imageTag=$(echo "$image" | cut -d':' -f2)"
 done
 echo
 echo "========================"
