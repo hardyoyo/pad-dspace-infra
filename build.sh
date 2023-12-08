@@ -19,9 +19,6 @@ function should_skip_image() {
   return 1 # one = false in Bash
 }
 
-
-
-
 # PREREQUISITES
 # you must create repositories in ECR for each image you want to push. Do this on the console:
 # https://us-west-2.console.aws.amazon.com/ecr/repositories?region=us-west-2
