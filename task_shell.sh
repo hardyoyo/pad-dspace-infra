@@ -54,7 +54,9 @@ echo "Task: $TASK_ARN"
 # known working command: aws ecs execute-command --task arn:aws:ecs:us-west-2:866216109762:task/pub-dspace-dev-cluster/db89a0a7acaa4f8f9472df53bc81b66d --cluster pub-dspace-dev-cluster --container dspace-backend --command /bin/bash --interactive
 
 # Execute command to shell into the specified task
+echo
+echo " 🚀  Connecting to /bin/sh ... if bash is available on this service's container, you can type 'bash' to open a bash shell."
 aws ecs execute-command --cluster ${FUNC}-cluster --task $TASK_ARN \
-    --container ${CONTAINER_NAME} --command "/bin/bash" --interactive
+    --container ${CONTAINER_NAME} --command "/bin/sh" --interactive
 
 exit 0
