@@ -55,7 +55,7 @@ echo "Task: $TASK_ARN"
 
 # Execute command to shell into the specified task
 echo
-echo " 🚀  Connecting to /bin/sh ... if bash is available on this service's container, you can type 'bash' to open a bash shell."
+echo " 🚀  Connecting to /bin/sh ... if bash is available on this service's container, you can type 'bash' to open a bash shell. For Alpine linux, type 'apk update && apk add bash' to install bash."
 aws ecs execute-command --cluster ${FUNC}-cluster --task $TASK_ARN \
     --container ${CONTAINER_NAME} --command "/bin/sh" --interactive
 
