@@ -1,0 +1,22 @@
+project_code: pub-dspace-dev # dev is the "new" sandbox
+region: us-west-1
+
+template_path: templates
+stack_group_path: stacks
+
+config:
+  project_name: pub-dspace
+  aws_profile: cdl-pad-dev
+  aws_region: us-west-1
+
+# hooks:
+#   before_launch:
+#     - !cmd "python scripts/setup.py"
+
+stacks:
+  - requirements
+  # uncomment these as you build each one
+  # - solr
+  # - backend
+  # - frontend
+  # - loadbalancer

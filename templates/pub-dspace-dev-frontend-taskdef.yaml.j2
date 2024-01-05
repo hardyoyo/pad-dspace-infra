@@ -1,0 +1,39 @@
+---
+family: pub-dspace-dev-frontend
+containerDefinitions: - name: dspace-frontend
+  image: 866216109762.dkr.ecr.us-west-2.amazonaws.com/cdl/dspace-angular:cdl-latest-dist
+  cpu: 1024
+  portMappings:
+    - containerPort: 4000
+      hostPort: 4000
+      protocol: tcp
+      name: dspace-frontend-4000-tcp
+      appProtocol: http
+  essential: true
+  environment:
+    - name: HOST
+      value: 0.0.0.0
+    - name: ui.host
+      value: 0.0.0.0
+    - name: DSPACE_UI_HOST
+      value: 0.0.0.0
+  environmentFiles:
+    - value: arn:aws:s3:::pub-dspace-dev-config/env/pub-dspace-dev.env
+      type: s3
+  mountPoints: []
+  volumesFrom: []
+  logConfiguration:
+    logDriver: awslogs
+    options:
+      awslogs-create-group: "true"
+      awslogs-group: /ecs/
+      awslogs-region: us-west-2
+      awslogs-stream-prefix: ecs
+  healthCheck:
+    command:
+      - CMD-SHELL
+      - ps -ef | grep -q '[p]m2-runtime start' || exit 2
+    interval: 5
+    timeout: 5
+    retries: 3
+    startPeriod: 30

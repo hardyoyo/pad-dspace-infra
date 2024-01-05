@@ -1,0 +1,24 @@
+project_code: pub-dspace-dev
+region: us-west-1
+
+template_path: templates
+stack_group_path: stacks
+
+config:
+  project_name: pub-dspace
+  aws_profile: cdl-pad-prd # dev,stg,prd all live in the prd account
+  aws_region: us-west-1
+
+# hooks:
+#   before_launch:
+#     - !cmd "python scripts/setup.py"
+
+stacks:
+  - requirements
+  - dev_cluster
+
+    # uncomment these as you build each one
+  # - solr
+  # - backend
+  # - frontend
+  # - loadbalancer

@@ -1,0 +1,9 @@
+---
+
+template_file: templates/cluster.yaml
+
+parameters:
+  ClusterName: !Join [!project_var project_code, "-dev-cluster"]
+  ProgramTag: pub
+  ServiceTag: dspace
+  EnvironmentTag: dev

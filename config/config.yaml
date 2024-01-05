@@ -1,5 +1,13 @@
 ---
-project_code: PAD-DSpace-Infra
+project_code: pub-dspace
 profile: cdl-pad-dev
 region: us-west-2
-stack_group: PAD-DSpace-Infra-stack-group
+
+constants:
+  vpc_id: 
+  domain: escholarship.org
+
+stack_defaults:
+  timeout_in_minutes: 10
+  on_failure: DO_NOTHING #handy for debugging
+

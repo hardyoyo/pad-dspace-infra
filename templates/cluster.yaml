@@ -1,0 +1,35 @@
+---
+AWSTemplateFormatVersion: 2010-09-09
+Description: !Join
+  - '-'
+  - - !Ref ProgramTag
+    - !Ref ServiceTag
+    - !Ref EnvironmentTag
+    - ECS-Cluster
+
+Parameters:
+  ClusterName:
+    Type: String
+  ProgramTag:
+    Type: String
+    Default: pub
+  ServiceTag:
+    Type: String
+    Default: dspace
+  EnvironmentTag:
+    Type: String
+    Default: dev
+
+Resources:
+  ECSCluster:
+    Type: AWS::ECS::Cluster
+    Properties:
+      ClusterName: !Ref ClusterName
+      Tags:
+        - Key: Program
+          Value: !Ref ProgramTag
+        - Key: Service
+          Value: !Ref ServiceTag
+        - Key: Environment
+          Value: !Ref EnvironmentTag
+

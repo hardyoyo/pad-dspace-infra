@@ -1,0 +1,6 @@
+---
+
+template_file: templates/cluster.yaml
+
+parameters:
+  ClusterName: pub-dspace-dev-cluster # FIXME: use a value from the config

@@ -1,0 +1,15 @@
+---
+AWSTemplateFormatVersion: 2010-09-09
+Description: >
+    Deploys the resources required for the pub-dspace project
+
+Resources:
+  # ECR repo
+  ContainerRegistry:
+    Type: AWS::ECR::Repository
+    Properties:
+      RepositoryName: !Join [!project_var project_code, "-repository"]
+
+
+
+
