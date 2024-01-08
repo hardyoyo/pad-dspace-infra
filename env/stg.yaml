@@ -1,5 +1,5 @@
 project_code: pub-dspace-stg
-region: us-west-1
+region: us-west-2
 
 template_path: templates
 stack_group_path: stacks
@@ -7,7 +7,7 @@ stack_group_path: stacks
 config:
   project_name: pub-dspace
   aws_profile: cdl-pad-prd # dev,stg,prd all live in the prd account
-  aws_region: us-west-1
+  aws_region: us-west-2
 
 # hooks:
 #   before_launch:

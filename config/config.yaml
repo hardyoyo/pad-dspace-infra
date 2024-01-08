@@ -4,7 +4,7 @@ profile: cdl-pad-dev
 region: us-west-2
 
 constants:
-  vpc_id: 
+  vpc_id: vpc-04d70b61
   domain: escholarship.org
 
 stack_defaults:
