@@ -8,7 +8,7 @@ export FUNC=pub-dspace-dev
 # Specify the S3 bucket
 S3_BUCKET="$FUNC-config"
 S3_FOLDER="env"
-DOTENV_FILES="config/env/*.env"
+DOTENV_FILES="dotenv/*.env"
 
 
 # Check if dotenv-linter is installed

@@ -14,7 +14,7 @@ config:
 #     - !cmd "python scripts/setup.py"
 
 stacks:
-  - requirements
+  - requirements.yaml
   # uncomment these as you build each one
   # - solr
   # - backend
