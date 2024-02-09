@@ -3,7 +3,9 @@ set -eou pipefail
 
 # Set AWS profile and function name
 export AWS_PROFILE=${AWS_PROFILE:-cdl-pad-dev}
-export FUNC=pub-dspace-dev
+export FUNC=pub-dspace
+export CDL_ENVIRONMENT=${CDL_ENVIRONMENT:-dev}
+export ENVIRONMENT="${FUNC}-${CDL_ENVIRONMENT}"
 
 # Specify the S3 bucket
 S3_BUCKET="$FUNC-config"

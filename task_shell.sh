@@ -7,8 +7,10 @@ set -euo pipefail
 # set -x
 
 # Set AWS profile and function name
-export AWS_PROFILE=cdl-pad-dev
-export FUNC=pub-dspace-dev
+export AWS_PROFILE=${AWS_PROFILE:-cdl-pad-dev}
+export FUNC=pub-dspace
+export CDL_ENVIRONMENT=${CDL_ENVIRONMENT:-dev}
+export ENVIRONMENT="${FUNC}-${CDL_ENVIRONMENT}"
 
 # Function to display script usage
 show_usage() {
@@ -37,11 +39,11 @@ SERVICE_NAME=$1
 # Build container name
 CONTAINER_NAME="dspace-${1}"
 
-# Build the service family based on the provided function and service name
-SERVICE_FAMILY="${FUNC}-${SERVICE_NAME}"
+# Build the service family based on the provided environment and service name
+SERVICE_FAMILY="${ENVIRONMENT}-${SERVICE_NAME}"
 
 # Get the task ARN based on the specified service family
-TASK_ARN=$(aws ecs list-tasks --cluster ${FUNC}-cluster --family ${SERVICE_FAMILY} --query "taskArns[0]" --output text)
+TASK_ARN=$(aws ecs list-tasks --cluster ${ENVIRONMENT}-cluster --family ${SERVICE_FAMILY} --query "taskArns[0]" --output text)
 
 if [ -z "$TASK_ARN" ]; then
     echo "No running task found for service family: $SERVICE_FAMILY"
@@ -56,7 +58,7 @@ echo "Task: $TASK_ARN"
 # Execute command to shell into the specified task
 echo
 echo " 🚀  Connecting to /bin/sh ... if bash is available on this service's container, you can type 'bash' to open a bash shell. For Alpine linux, type 'apk update && apk add bash' to install bash."
-aws ecs execute-command --cluster ${FUNC}-cluster --task $TASK_ARN \
+aws ecs execute-command --cluster ${ENVIRONMENT}-cluster --task $TASK_ARN \
     --container ${CONTAINER_NAME} --command "/bin/sh" --interactive
 
 exit 0
