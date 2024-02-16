@@ -1,11 +1,5 @@
 ---
 AWSTemplateFormatVersion: 2010-09-09
-Description: !Join
-  - '-'
-  - - !Ref ProgramTag
-    - !Ref ServiceTag
-    - !Ref EnvironmentTag
-    - ECS-Cluster
 
 Parameters:
   ClusterName:

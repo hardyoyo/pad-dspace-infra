@@ -40,6 +40,20 @@ then
     exit   1
 fi
 
+# Check if cfn-lint is installed
+if ! command -v cfn-lint &> /dev/null
+then
+    echo "cfn-lint could not be found. Please install it."
+    exit   1
+fi
+
+# run cfn-lint on all templates
+echo "Running cfn-lint on all templates..."
+if cfn-lint -t templates/*.yaml; then
+    echo "  ✅ No cfn-lint errors found in templates"
+    echo
+fi
+
 # Define the environment name and paths
 ENVIRONMENT_NAME="$1"
 ENVIRONMENT_CONFIG="env/$ENVIRONMENT_NAME.yaml"
@@ -56,6 +70,7 @@ fi
 echo "Validating YAML syntax of $ENVIRONMENT_CONFIG..."
 if yamllint "$ENVIRONMENT_CONFIG"; then
     echo "  ✅ No YAML syntax errors found in $ENVIRONMENT_CONFIG"
+    echo
 fi
 
 echo
@@ -78,4 +93,5 @@ do
     sceptre validate "stacks/$STACK"
 
 done
-exit 0
+
+echo

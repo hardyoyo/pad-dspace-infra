@@ -1,3 +1,4 @@
 sceptre
 yamllint
 yq
+cfn-lint

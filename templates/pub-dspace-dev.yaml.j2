@@ -3,7 +3,7 @@ Description: >
     Creates a container to run DSpace REST-API/DSpace back-end for CDL
 
 # Adjust this name
-{% set funcname = 'pub-dspace-stg' %}
+{% set project_code = stack_config.parameters.project_code %}
 
 Resources:
 
@@ -11,13 +11,13 @@ Resources:
   ContainerRepository:
     Type: AWS::ECR::Repository
     Properties:
-      RepositoryName: {{funcname}}
+      RepositoryName: {{project_code}}
 
   # We'll run the task in this Fargate cluster
   Cluster:
     Type: AWS::ECS::Cluster
     Properties:
-      ClusterName: {{funcname}}-cluster
+      ClusterName: {{project_code}}-cluster
       Tags:
         - Key: Program
           Value: pub
@@ -30,7 +30,7 @@ Resources:
   ExecRole:
     Type: AWS::IAM::Role
     Properties:
-      RoleName: {{funcname}}-ExecRole
+      RoleName: {{project_code}}-ExecRole
       AssumeRolePolicyDocument:
         Statement:
           - Action: sts:AssumeRole
@@ -47,7 +47,7 @@ Resources:
                   - ecr:GetDownloadUrlForLayer
                   - ecr:BatchGetImage
                 Effect: Allow
-                Resource: !Sub arn:aws:ecr:${AWS::Region}:${AWS::AccountId}:repository/{{funcname}}
+                Resource: !Sub arn:aws:ecr:${AWS::Region}:${AWS::AccountId}:repository/{{project_code}}
               - Action: ecr:GetAuthorizationToken
                 Effect: Allow
                 Resource: "*"
@@ -62,7 +62,7 @@ Resources:
   TaskRole:
     Type: AWS::IAM::Role
     Properties:
-      RoleName: {{funcname}}-TaskRole
+      RoleName: {{project_code}}-TaskRole
       AssumeRolePolicyDocument:
         Statement:
           - Action: sts:AssumeRole
@@ -93,13 +93,13 @@ Resources:
                   - logs:DescribeLogStreams
                   - logs:PutLogEvents
                 Effect: Allow
-                Resource: arn:aws:logs:us-west-2:451826914157:log-group:{{funcname}}-logs:*
+                Resource: arn:aws:logs:us-west-2:451826914157:log-group:{{project_code}}-logs:*
 
   # Logs from the function will go here
   LogGroup:
     Type: AWS::Logs::LogGroup
     Properties:
-      LogGroupName: {{funcname}}-logs
+      LogGroupName: {{project_code}}-logs
       RetentionInDays: 7
     UpdateReplacePolicy: Retain
     DeletionPolicy: Retain
@@ -110,14 +110,14 @@ Resources:
     Properties:
       ContainerDefinitions:
         - Essential: true
-          Image: !Sub ${AWS::AccountId}.dkr.ecr.${AWS::Region}.amazonaws.com/{{funcname}}:latest
+          Image: !Sub ${AWS::AccountId}.dkr.ecr.${AWS::Region}.amazonaws.com/{{project_code}}:latest
           LogConfiguration:
             LogDriver: awslogs
             Options:
               awslogs-group: !Ref LogGroup
-              awslogs-stream-prefix: {{funcname}}
+              awslogs-stream-prefix: {{project_code}}
               awslogs-region: !Ref AWS::Region
-          Name: {{funcname}}-TaskDef
+          Name: {{project_code}}-TaskDef
           PortMappings:
             - ContainerPort: 80
               HostPort: 80
@@ -170,7 +170,7 @@ Resources:
       EphemeralStorage:
         SizeInGiB: 101   # 100 GB disk
       ExecutionRoleArn: !GetAtt ExecRole.Arn
-      Family: {{funcname}}-TaskDef
+      Family: {{project_code}}-TaskDef
       NetworkMode: awsvpc
       RequiresCompatibilities:
         - FARGATE
@@ -189,7 +189,7 @@ Resources:
       - ListenerHTTP
       - ListenerHTTPS
     Properties:
-      ServiceName: {{funcname}}-Service
+      ServiceName: {{project_code}}-Service
       Cluster: !Ref Cluster
       TaskDefinition: !Ref TaskDef
       DeploymentConfiguration:
@@ -210,7 +210,7 @@ Resources:
           SecurityGroups:
             - sg-024cabc4cdfcac609  # HTTP(S) from AWS/CDL/VPN - CDL-Prd-VPC
       LoadBalancers:
-        - ContainerName: {{funcname}}-TaskDef
+        - ContainerName: {{project_code}}-TaskDef
           ContainerPort: 80
           TargetGroupArn: !Ref TargetGroup
       Tags:
@@ -230,7 +230,7 @@ Resources:
       HealthCheckTimeoutSeconds: 5
       UnhealthyThresholdCount: 2
       HealthyThresholdCount: 2
-      Name: {{funcname}}-tg
+      Name: {{project_code}}-tg
       Port: 80
       Protocol: HTTP
       TargetGroupAttributes:
@@ -274,7 +274,7 @@ Resources:
         # this is the default, but is specified here in case it needs to be changed
         - Key: idle_timeout.timeout_seconds
           Value: 60
-      Name: {{funcname}}-lb
+      Name: {{project_code}}-lb
       # "internal" is also an option
       Scheme: internet-facing
       SecurityGroups:
@@ -332,7 +332,7 @@ Resources:
     Properties:
       ScheduleExpression: cron(*/2 * * * ? *)  # once every 2 minutes
       State: ENABLED
-      Name: {{funcname}}-scheduled-run
+      Name: {{project_code}}-scheduled-run
       Targets:
         - Arn: !GetAtt Cluster.Arn
           EcsParameters:
