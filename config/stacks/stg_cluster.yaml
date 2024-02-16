@@ -1,0 +1,9 @@
+---
+
+  template_file: templates/cluster.yaml
+  
+  parameters:
+    ClusterName: !join [!project_var project_code, "-stg-cluster"]
+    ProgramTag: pub
+    ServiceTag: dspace
+    EnvironmentTag: stg

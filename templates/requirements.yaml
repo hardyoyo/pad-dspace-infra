@@ -1,0 +1,15 @@
+---
+AWSTemplateFormatVersion: 2010-09-09
+Description: !Join
+  - '-'
+  - - !Ref ProgramTag
+    - !Ref ServiceTag
+    - !Ref EnvironmentTag
+    - ECS-Cluster Requirements
+
+Resources:
+  # ECR repo
+  ContainerRegistry:
+    Type: AWS::ECR::Repository
+    Properties:
+      RepositoryName: !Sub "${project_code}-repository"

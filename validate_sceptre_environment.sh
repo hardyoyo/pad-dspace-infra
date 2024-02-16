@@ -48,8 +48,11 @@ fi
 
 # Validate the environment config file with yamllint
 echo "Validating YAML syntax of $ENVIRONMENT_CONFIG..."
-yamllint "$ENVIRONMENT_CONFIG"
+if yamllint "$ENVIRONMENT_CONFIG"; then
+    echo "  ✅ No YAML syntax errors found in $ENVIRONMENT_CONFIG"
+fi
 
+echo
 echo "Extracting stack names from $ENVIRONMENT_CONFIG..."
 # Extract stacks from the environment config file using yq
 STACKS=$(yq '.stacks[]' "$ENVIRONMENT_CONFIG")
@@ -61,7 +64,10 @@ for STACK in $STACKS
 do
     echo "Validating stack $STACK..." && echo
     echo "YAMLLINT:"
-    yamllint "$STACKS_DIR/$STACK" && echo
+    if yamllint "$STACKS_DIR/$STACK"; then
+        echo "  ✅ No YAML syntax errors found in $STACKS_DIR/$STACK"
+    fi
+    echo
     echo "SCEPTRE VALIDATE:"
     sceptre validate "stacks/$STACK"
 
