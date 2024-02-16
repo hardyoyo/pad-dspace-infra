@@ -10,13 +10,10 @@ Resources:
     Properties:
       RepositoryName: !Join [!project_var project_code, "-repository"]
 
-#TODO: add ExecRole, TaskRole, LogGroup, etc.
+# TODO: add ExecRole, TaskRole, LogGroup, etc.
 
 
 Outputs:
   ContainerRegistry:
     Description: ECR repository
     Value: !Ref ContainerRegistry
-
-
-

@@ -9,5 +9,4 @@ constants:
 
 stack_defaults:
   timeout_in_minutes: 10
-  on_failure: DO_NOTHING #handy for debugging
-
+  on_failure: DO_NOTHING # handy for debugging
