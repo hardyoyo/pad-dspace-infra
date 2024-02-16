@@ -1,7 +1,9 @@
 #!/bin/bash
+# Validate a Sceptre environment and its stacks using yamllint and sceptre validate
 
 # Function to display help text
 function show_help() {
+    echo "Validate a Sceptre environment and its stacks using yamllint and sceptre validate."
     echo "Usage: $0 [--help] <environment_name>"
     echo ""
     echo "Options:"
