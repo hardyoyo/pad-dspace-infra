@@ -1,5 +1,11 @@
 #!/bin/bash
-# Validate a Sceptre environment and its stacks using yamllint and sceptre validate
+# Validate a Sceptre environment and its stacks using yamllint and sceptre
+# validate
+
+set -euo pipefail
+
+# Uncomment for debug
+# set -x
 
 # Function to display help text
 function show_help() {
