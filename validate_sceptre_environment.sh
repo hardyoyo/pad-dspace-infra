@@ -95,3 +95,4 @@ do
 done
 
 echo
+exit 0
