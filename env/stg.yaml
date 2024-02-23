@@ -1,3 +1,4 @@
+---
 project_code: pub-dspace-stg
 region: us-west-2
 
@@ -6,7 +7,7 @@ stack_group_path: stacks
 
 config:
   project_name: pub-dspace
-  aws_profile: cdl-pad-prd # dev,stg,prd all live in the prd account
+  aws_profile: cdl-pad-prd  # dev,stg,prd all live in the prd account
   aws_region: us-west-2
 
 # hooks:

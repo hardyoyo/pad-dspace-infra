@@ -1,17 +1,22 @@
 ---
 AWSTemplateFormatVersion: 2010-09-09
-Description: !Join
-  - '-'
-  - - !Ref ProgramTag
-    - !Ref ServiceTag
-    - !Ref EnvironmentTag
-    - ECS-Cluster Requirements
+Description: ECS-Cluster Requirements
+
+Parameters:
+  ProgramTag:
+    Type: String
+  ServiceTag:
+    Type: String
 
 Resources:
   # ECR repo
   ContainerRegistry:
     Type: AWS::ECR::Repository
     Properties:
-      RepositoryName: !Sub "${project_code}-repository"
+      RepositoryName: !Join
+        - "-"
+        - - !Ref ProgramTag
+          - !Ref ServiceTag
+          - "repository"
 
       # TODO: add ExecRole, TaskRole, LogGroup, etc.

@@ -1,9 +1,13 @@
 ---
 
-  template_file: templates/cluster.yaml
+  template:
+    path: cluster.yaml
   
   parameters:
-    ClusterName: !join [!project_var project_code, "-prd-cluster"]
+    project_code: {{stack_group_config.project_code}}
+    ClusterName: !join
+      - {{stack_group_config.project_code}}
+      - "-prd-cluster"
     ProgramTag: pub
     ServiceTag: dspace
     EnvironmentTag: prd
