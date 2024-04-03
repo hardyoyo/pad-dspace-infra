@@ -13,7 +13,6 @@ function should_skip_image() {
   done
   # echo "DEBUG: should_skip_image: Not skipping $image_name"
   return 1 # one = false in Bash
-}
 
 
 
